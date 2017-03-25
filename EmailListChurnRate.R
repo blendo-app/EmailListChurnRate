@@ -3,6 +3,7 @@ library(caret)
 library(e1071)
 library(pscl)
 library(pROC)
+library(ModelMetrics)
 library(DMwR)
 
 library(ggplot)
@@ -15,7 +16,7 @@ library(randomForest)
 
 # Importing the csv file retrieved using the query from the mailchimp.sql file
 library(readr)
-MailchimpData <- read_csv("PATH_TO_CSV_FILE")
+MailchimpData <- read_csv("PATH_TO_CSV")
 
 #Create the subscription variables. 1 for churned of cleaned, 0 else.
 MailchimpData$subscription<-as.numeric(MailchimpData$status != 'subscribed')
@@ -161,6 +162,7 @@ precision<-A/(A+B)
 precision
 F1<-2*precision*sensitivity/(precision+sensitivity)
 F1
+
 auc(test$subscription, prediction)
 
 ## The following code generates a visual representation of a classification tree ##
