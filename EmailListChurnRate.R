@@ -6,7 +6,7 @@ library(pROC)
 library(ModelMetrics)
 library(DMwR)
 
-library(ggplot)
+library(ggplot2)
 library(corrplot)
 library(ggmap)
 library(maptools)
@@ -17,9 +17,10 @@ library(randomForest)
 # Importing the csv file retrieved using the query from the mailchimp.sql file
 library(readr)
 MailchimpData <- read_csv("PATH_TO_CSV")
+MailchimpData<-aggregated
 
-#Create the subscription variables. 1 for churned of cleaned, 0 else.
-MailchimpData$subscription<-as.numeric(MailchimpData$status != 'subscribed')
+#Create the churn variable. 1 for churned or cleaned, 0 else.
+MailchimpData$churn<-as.numeric(MailchimpData$status != 'subscribed')
 sapply(MailchimpData,function(x) sum(is.na(x)))
 
 #NA values in the aggregated fields is interpreted as 0.
@@ -65,13 +66,13 @@ mp <- mp+ geom_point(aes(x=visit.x, y=visit.y) ,color=(as.numeric(MailchimpData$
 mp
 
 #Histogram for mailing lists
-list_sub <- data.frame(table(MailchimpData$list_id,MailchimpData$subscription))
-names(list_sub) <- c("List_id","Subscription","Count")
-ggplot(data=list_sub, aes(x=List_id, y=Count, fill=Subscription, alpha=0.1)) + geom_bar(stat="identity")
+list_sub <- data.frame(table(MailchimpData$list_id,MailchimpData$churn))
+names(list_sub) <- c("List_id","churn","Count")
+ggplot(data=list_sub, aes(x=List_id, y=Count, fill=churn, alpha=0.1)) + geom_bar(stat="identity")
 
 #Pairwise scatterplot for member rating
-ggplot(MailchimpData, aes(x= subscription, y = member_rating))+
-  geom_jitter(alpha=0.5, aes(color=subscription),position = position_jitter(width = 0.1))+coord_flip()
+ggplot(MailchimpData, aes(x= churn, y = member_rating))+
+  geom_jitter(alpha=0.5, aes(color=churn),position = position_jitter(width = 0.1))+coord_flip()
 
 #casting integer fields into numeric for easier dataset splitting later
 MailchimpData$location_dstoff<-as.numeric(MailchimpData$location_dstoff)
@@ -101,8 +102,8 @@ train.n<-sapply(train,class)!='character'
 trainF<-train[,train.n]
 
 set.seed(42)
-#model constructin
-randomForestModel <- randomForest(as.factor(subscription) ~.,
+#model construction
+randomForestModel <- randomForest(as.factor(churn) ~.,
                     data=trainF, 
                     importance=TRUE, 
                     ntree=2000)
@@ -114,7 +115,7 @@ varImpPlot(randomForestModel)
 prediction <- predict(randomForestModel, test)
 
 #evaluating the model
-confMatrix<-table(prediction,test$subscription)
+confMatrix<-table(prediction,test$churn)
 A<-confMatrix[4]
 B<-confMatrix[2]
 C<-confMatrix[3]
@@ -135,7 +136,7 @@ F1
 set.seed(42)
 
 #constructint
-randomForestModel <- randomForest(as.factor(subscription) ~last_changed+stats_avg_open_rate+
+randomForestModel <- randomForest(as.factor(churn) ~last_changed+stats_avg_open_rate+
                       member_rating+totalopens+list_id,
                     data=trainF, 
                     importance=TRUE, proximity=TRUE,
@@ -146,7 +147,7 @@ varImpPlot(randomForestModel)
 prediction <- predict(randomForestModel, test)
 
 #evaluating
-confMatrix<-table(prediction,test$subscription)
+confMatrix<-table(prediction,test$churn)
 
 D<-confMatrix[1]
 C<-confMatrix[3]
@@ -163,7 +164,7 @@ precision
 F1<-2*precision*sensitivity/(precision+sensitivity)
 F1
 
-auc(test$subscription, prediction)
+auc(test$churn, prediction)
 
 ## The following code generates a visual representation of a classification tree ##
 
